@@ -1,6 +1,7 @@
 modules:
-  jira:issuePanel:
-    - key: hello-world-app-hello-world-issue-panel
+  jira:issueContext:
+    - key: issue-cost-issue-context
+      label: Issue Cost
       resource: main
       resolver:
         function: resolver
@@ -13,6 +14,8 @@ modules:
 resources:
   - key: main
     path: src/frontend/index.jsx
+  - key: resolver
+    path: src/resolvers
 permissions:
   scopes:
     - read:jira-work

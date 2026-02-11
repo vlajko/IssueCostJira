@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ForgeReconciler, { Text, Textfield, Button, Inline } from '@forge/react';
-import { requestJira, invoke } from '@forge/bridge';
+import { requestJira, invoke, getContext } from '@forge/bridge';
 
 const App = () => {
   const [issueKey, setIssueKey] = useState(null);
@@ -17,8 +17,9 @@ const App = () => {
     let mounted = true;
     (async () => {
       try {
-        // get issue key from resolver (works for issue panel)
+        // Prefer resolver for issue key (matches issue panel behavior)
         const resp = await invoke('getIssueContext').catch(() => null);
+        console.log('resolver resp:', resp);
         const urlKey = (() => {
           try {
             const params = new URLSearchParams(window.location.search || '');
@@ -27,7 +28,28 @@ const App = () => {
             return null;
           }
         })();
-        const finalKey = resp?.issueKey || urlKey || null;
+        // Try values returned by resolver first, then URL, then bridge context
+        let finalKey = resp?.issueKey || resp?.context?.extension?.issue?.key || resp?.context?.issue?.key || urlKey || null;
+        // Additional URL/pathname fallbacks (handles /browse/ISSUE-123 and selectedIssue query param)
+        if (!finalKey) {
+          try {
+            const href = window.location.href || '';
+            const path = window.location.pathname || '';
+            const browseMatch = href.match(/\/browse\/([A-Z0-9]+-[0-9]+)/i) || path.match(/\/browse\/([A-Z0-9]+-[0-9]+)/i);
+            if (browseMatch && browseMatch[1]) finalKey = browseMatch[1];
+            if (!finalKey) {
+              const params = new URLSearchParams(window.location.search || '');
+              const sel = params.get('selectedIssue') || params.get('selectedIssueKey') || params.get('issueKey') || params.get('issue') || params.get('selectedIssue');
+              if (sel) finalKey = sel;
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        if (!finalKey) {
+          const ctx = await getContext().catch(() => null);
+          finalKey = ctx?.issue?.key || ctx?.extension?.issue?.key || ctx?.issueKey || null;
+        }
         if (!mounted) return;
         setIssueKey(finalKey);
         if (!finalKey) {
@@ -138,6 +160,9 @@ const App = () => {
           <Button onClick={saveRate} disabled={loading}>Save</Button>
           <Button onClick={cancelEdit} disabled={loading}>Cancel</Button>
         </Inline>
+      )}
+      {!!statusMsg && (
+        <Text>{statusMsg}</Text>
       )}
     </>
   );
