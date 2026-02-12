@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import ForgeReconciler, { Text, Textfield, Button, Inline } from '@forge/react';
+import ForgeReconciler, { Text, Textfield, Button, Inline, useProductContext } from '@forge/react';
 import { requestJira, invoke, getContext } from '@forge/bridge';
 
 const App = () => {
@@ -13,52 +13,27 @@ const App = () => {
   const [remainingHours, setRemainingHours] = useState(0);
   const [statusMsg, setStatusMsg] = useState('');
 
+  // Get issue context from useProductContext
+  const productContext = useProductContext();
+  const contextIssueKey = productContext?.extension?.issue?.key || null;
+
   useEffect(() => {
+    // Wait for product context to be available
+    if (!productContext || !contextIssueKey) {
+      console.debug('Waiting for product context...');
+      return;
+    }
+
     let mounted = true;
     (async () => {
       try {
-        // Prefer resolver for issue key (matches issue panel behavior)
-        const resp = await invoke('getIssueContext').catch(() => null);
-        console.log('resolver resp:', resp);
-        const urlKey = (() => {
-          try {
-            const params = new URLSearchParams(window.location.search || '');
-            return params.get('issueKey') || params.get('issue') || null;
-          } catch (e) {
-            return null;
-          }
-        })();
-        // Try values returned by resolver first, then URL, then bridge context
-        let finalKey = resp?.issueKey || resp?.context?.extension?.issue?.key || resp?.context?.issue?.key || urlKey || null;
-        // Additional URL/pathname fallbacks (handles /browse/ISSUE-123 and selectedIssue query param)
-        if (!finalKey) {
-          try {
-            const href = window.location.href || '';
-            const path = window.location.pathname || '';
-            const browseMatch = href.match(/\/browse\/([A-Z0-9]+-[0-9]+)/i) || path.match(/\/browse\/([A-Z0-9]+-[0-9]+)/i);
-            if (browseMatch && browseMatch[1]) finalKey = browseMatch[1];
-            if (!finalKey) {
-              const params = new URLSearchParams(window.location.search || '');
-              const sel = params.get('selectedIssue') || params.get('selectedIssueKey') || params.get('issueKey') || params.get('issue') || params.get('selectedIssue');
-              if (sel) finalKey = sel;
-            }
-          } catch (e) {
-            // ignore
-          }
-        }
-        if (!finalKey) {
-          const ctx = await getContext().catch(() => null);
-          finalKey = ctx?.issue?.key || ctx?.extension?.issue?.key || ctx?.issueKey || null;
-        }
+        console.log('Using issue key from product context:', contextIssueKey);
+        
         if (!mounted) return;
-        setIssueKey(finalKey);
-        if (!finalKey) {
-          setLoading(false);
-          return;
-        }
+        setIssueKey(contextIssueKey);
         const [propRes, issueRes] = await Promise.all([
-          requestJira(`/rest/api/3/issue/${finalKey}/properties/rate`, { method: 'GET' }),
-          requestJira(`/rest/api/3/issue/${finalKey}?fields=timeoriginalestimate,timetracking,timespent,timeestimate`, { method: 'GET' })
+          requestJira(`/rest/api/3/issue/${contextIssueKey}/properties/rate`, { method: 'GET' }),
+          requestJira(`/rest/api/3/issue/${contextIssueKey}?fields=timeoriginalestimate,timetracking,timespent,timeestimate`, { method: 'GET' })
         ]);
         const propBody = await propRes.json().catch(() => null);
         setSavedRate(propBody?.value ?? null);
@@ -82,7 +57,7 @@ const App = () => {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [productContext, contextIssueKey]);
 
   const saveRate = async () => {
     console.log('issue key:', issueKey);
