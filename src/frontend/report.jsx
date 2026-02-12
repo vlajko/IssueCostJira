@@ -8,6 +8,7 @@ import ForgeReconciler, {
   Spinner,
   SectionMessage,
   Strong,
+  useProductContext,
 } from '@forge/react';
 import { requestJira } from '@forge/bridge';
 
@@ -17,10 +18,24 @@ const TimeTrackingReport = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Get project context using useProductContext hook
+  const productContext = useProductContext();
+  const projectKey = productContext?.extension?.project?.key || null;
+
   useEffect(() => {
+    // Wait until productContext is available before executing logic
+    if (!productContext || !projectKey) {
+      console.debug('Waiting for product context to become available...');
+      return;
+    }
+
     (async () => {
       try {
-        const jql = 'project IS NOT EMPTY ORDER BY updated DESC';
+        console.log('Product context:', productContext);
+        console.log('Product context project key:', projectKey);
+
+        // Filter by the specific project
+        const jql = `project = ${projectKey} ORDER BY updated DESC`;
         const fields = 'key,summary,timeoriginalestimate,timetracking,timespent,timeestimate';
         const searchParams = new URLSearchParams({
           jql,
@@ -102,7 +117,7 @@ const TimeTrackingReport = () => {
         setLoading(false);
       }
     })();
-  }, []);
+  }, [productContext, projectKey]);
 
   const columns = [
     { key: 'key', title: 'Issue Key', width: 12 },
