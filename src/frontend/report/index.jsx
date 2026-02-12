@@ -7,6 +7,7 @@ import ForgeReconciler, {
   DynamicTable,
   Spinner,
   SectionMessage,
+  useProductContext
 } from '@forge/react';
 import { invoke } from '@forge/bridge';
 
