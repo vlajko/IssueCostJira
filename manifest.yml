@@ -8,12 +8,22 @@ modules:
       render: native
       title: Issue Cost
       icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
+  jira:globalPage:
+    - key: time-tracking-report
+      title: Time Tracking Report
+      description: View time tracking data and costs for all issues
+      resource: report
+      render: native
+      resolver:
+        function: resolver
   function:
     - key: resolver
       handler: index.handler
 resources:
   - key: main
     path: src/frontend/index.jsx
+  - key: report
+    path: src/frontend/report.jsx
   - key: resolver
     path: src/resolvers
 permissions:
