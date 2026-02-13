@@ -131,6 +131,15 @@ const TimeTrackingReport = () => {
     { key: 'remainingCost', title: 'Remaining Cost ($)', width: 15 },
   ];
 
+  // Build `head` for DynamicTable from `columns` so the header row is shown
+  const head = {
+    cells: columns.map((col) => ({
+      key: col.key,
+      content: col.title,
+      width: col.width,
+    })),
+  };
+
   const tableRows = issues.map((issue, idx) => ({
     key: `row-${idx}`,
     cells: [
@@ -174,7 +183,7 @@ const TimeTrackingReport = () => {
   return (
     <Box>
       <Stack space="space.300">
-        <Heading size="xlarge">Time Tracking Report</Heading>
+        <Heading size="xlarge">RTime Tracking Report</Heading>
 
         {issues.length === 0 ? (
           <SectionMessage appearance="information">
@@ -184,7 +193,7 @@ const TimeTrackingReport = () => {
           <>
             <Heading size="large">Issues</Heading>
             <DynamicTable
-              columns={columns}
+              head={head}
               rows={tableRows}
               isLoading={false}
               testId="time-tracking-table"
